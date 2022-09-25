@@ -3,7 +3,26 @@ use std::io;
 use std::io::Write;
 use rpassword::read_password;
 
-fn sign_up(database: &sqlite3::Connection) -> String { 
+fn print_flush(s: &str) {
+    print!("{s}");
+    io::stdout().flush().expect("IO Error :: Unable to flush stdout");
+}
+
+fn clear_screen() {
+    print_flush(&format!("{esc}[2J{esc}[1;1H", esc = 27 as char));
+}
+
+fn user_input<T: std::str::FromStr>() -> Result<T, <T as std::str::FromStr>::Err>
+where
+    <T as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    let mut inp = String::new();
+    io::stdin().read_line(&mut inp).expect("IO error");
+    return inp.trim().parse::<T>();
+}
+
+
+fn sign_in(database: &sqlite3::Connection) -> String { 
 
     //only letters and numbers to prevent sql injection
     fn check_name(name: &str) -> bool {
@@ -22,11 +41,7 @@ fn sign_up(database: &sqlite3::Connection) -> String {
         print!("Username: ");
         io::stdout().flush().expect("Flush");
 
-        let mut user_name = String::new();
-        io::stdin()
-            .read_line(&mut user_name)
-            .expect("Error reading value");
-        let user_name = user_name.trim().to_owned();
+        let user_name: String = user_input::<String>().unwrap().trim().to_owned();
 
         if check_name(&user_name) { 
             println!("User name should only contain letters and numbers");
@@ -35,8 +50,7 @@ fn sign_up(database: &sqlite3::Connection) -> String {
         
 
         //get password
-        print!("Password: ");
-        io::stdout().flush().expect("Flush");
+        print_flush("Password: ");
 
         let user_password = read_password().expect("IO Error :: Cannot Read Password");
         let user_password = sha256::digest(user_password.trim());
@@ -75,6 +89,7 @@ fn get_questions_vector(database: &sqlite3::Connection) -> Result<Vec< (u32,Opti
                          let mut question_content = String::new();
                          let mut by_author = None;
                          let mut id: u32 = 0;
+
                          // get qst
                          node.get(0).map(|questions_arr|  
                             questions_arr.1
@@ -137,17 +152,13 @@ fn answer_thread(database: &sqlite3::Connection, thread_id: u32,to_id: u32,autho
 }
 
 fn open_thread(database: &sqlite3::Connection, account: &String) {
-    println!("Input the id of the thread you wish to open:");
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Read Error");
-    let input = input.trim().parse::<u32>();
-    if input.is_err() {
+    print_flush("Input the id of the thread you wish to open:");
+    let thread_id  = user_input::<u32>();
+    if thread_id.is_err() {
         println!("Invalid Input :: Enter a number");
         return;
     }
-    let thread_id = input.unwrap();
+    let thread_id = thread_id.unwrap();
     if !check_exist_thread(database, thread_id) {
         println!("No such thread.");
         return;
@@ -187,29 +198,23 @@ fn open_thread(database: &sqlite3::Connection, account: &String) {
 
     loop {
         println!("Commands[ 0: back, 1: answer ]");
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Read Error");
+        print_flush("Command: ");
+        let input = user_input::<String>().unwrap();
 
         match input.to_lowercase().trim() { 
             "1" | "answer" => {
 
-                println!("input the id of which you wish to answer (0 if answering the original question):");
-                let mut input = String::new();
-                io::stdin()
-                    .read_line(&mut input)
-                    .expect("Read Error");
-                let input = input.trim().parse::<u32>();
-                if input.is_err() { println!("Invalid input :: Enter a number"); continue; }
-                let to_id = input.unwrap();
+                print_flush("input the id of which you wish to answer (0 if answering the original question):");
+                let to_id = user_input::<u32>();
+                if to_id.is_err() { 
+                    println!("Invalid input :: Enter a number"); 
+                    continue; 
+                }
+                let to_id = to_id.unwrap();
 
                 if to_id == 0 || check_exist_in_thread(database, to_id, thread_id) {
-                    let mut input = String::new();
-                    io::stdin()
-                        .read_line(&mut input)
-                        .expect("Read Error");
-                    answer_thread(database, thread_id,to_id, account, input.trim());
+                    let content = user_input::<String>().unwrap();
+                    answer_thread(database, thread_id,to_id, account, content.trim());
                     open_answers(database, thread_id, 0, 0);
                 } else {
                     println!("No such id exists");
@@ -225,10 +230,7 @@ fn open_thread(database: &sqlite3::Connection, account: &String) {
 }
 
 fn ask_question(database: &sqlite3::Connection, account: &String) -> Result<(), sqlite3::Error> { 
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Read Error");
+    let input = user_input::<String>().unwrap();
     let input = input.trim();
     database
         .execute(format!("INSERT INTO questions(qst, by) VALUES ('{input}', '{account}') ;"))?;
@@ -262,6 +264,17 @@ fn init_database(database: &sqlite3::Connection) -> Result<(), sqlite3::Error> {
     Ok(())
 }
 
+fn get_users(database: &sqlite3::Connection) -> Result<(), sqlite3::Error> {
+    database.iterate("SELECT name FROM accounts", |node| {
+             node.get(0).map(|name_tuple| {
+                  name_tuple.1.map(|name| println!("{name}"))
+             });
+            true
+    })?;
+
+    Ok(())
+}
+
 fn main() -> Result<(), sqlite3::Error > {
     let database = sqlite3::open("database.db").expect("Couldn't connect to database.");
     init_database(&database)?;
@@ -276,21 +289,21 @@ fn main() -> Result<(), sqlite3::Error > {
         database.execute(format!("INSERT INTO accounts(name, password) VALUES('{}', '{}')", user_name, user_password ))?;
     }
 
-    let account = sign_up(&database);
+    let account = sign_in(&database);
     println!("Signed As: {account}");
 
     loop {
-        let mut input = String::new();
-        println!("Commands: [ 1: questions, 2: ask, 3: open_thread, 4: get-users, 0: exit ]");
-        print!("Command: "); io::stdout().flush().expect("Flush Error");
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Read Error");
+        println!("Commands: [ 1: questions, 2: ask, 3: open_thread, 4: users, 9: clear, 0: exit ]");
+        print_flush("Command: "); 
+
+        let input = user_input::<String>().unwrap();
 
         match input.to_lowercase().trim() { 
             "1" | "questions" => { get_questions(&database)?; },
             "2" | "ask" => { ask_question(&database, &account)?; },
             "3" | "open_thread" => { open_thread(&database, &account); },
+            "4" | "users" => { get_users(&database)?; }
+            "9" | "clear" => { clear_screen(); }
             "0" | "exit" => break,
             _ => continue
         }
