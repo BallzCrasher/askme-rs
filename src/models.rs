@@ -37,6 +37,7 @@ pub struct Answer {
     pub id: i32,
     pub content: String,
     pub thread_id: i32,
+    pub to_id: i32,
     pub publisher: i32,
     pub is_anonymous: bool
 }
@@ -46,6 +47,7 @@ pub struct Answer {
 pub struct NewAnswer<'a> {
     pub content: &'a str,
     pub thread_id: i32,
+    pub to_id: i32,
     pub publisher: i32,
     pub is_anonymous: bool
 }
@@ -72,6 +74,7 @@ diesel::table! {
         id -> Integer,
         content -> Text,
         thread_id -> Integer,
+        to_id -> Integer,
         publisher -> Integer,
         is_anonymous -> Bool,
     }

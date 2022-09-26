@@ -16,9 +16,9 @@ fn main() {
         match input.to_lowercase().trim() { 
             "1" | "questions" => get_questions(connection),
             "2" | "ask" => ask_question(connection, &user_account) ,
-            "3" | "open_thread" => (),
+            "3" | "open_thread" => open_thread(connection, &user_account),
             "4" | "users" => get_users(connection),
-            "9" | "clear" => (),
+            "9" | "clear" => clear_screen(),
             "0" | "exit" => break,
             _ => continue
         }

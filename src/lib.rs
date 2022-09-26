@@ -46,6 +46,15 @@ pub fn init_database(conn: &mut SqliteConnection) -> Result<(),diesel::result::E
                 is_anonymous bool NOT NULL
             );").execute(conn)?;
 
+    sql_query("CREATE TABLE IF NOT EXISTS answers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                thread_id INTEGER NOT NULL,
+                to_id INTEGER NOT NULL,
+                publisher TEXT NOT NULL,
+                is_anonymous bool NOT NULL
+            );").execute(conn)?;
+
     Ok(())
 }
 
@@ -80,7 +89,7 @@ pub fn login(conn: &mut SqliteConnection) -> Account {
             .filter(name.eq(username))
             .filter(password.eq(user_password))
             .first::<Account>(conn);
-        if user_id.is_err() { println!("Invalid Username Or Password."); }
+        if user_id.is_err() { println!("Invalid Username Or Password."); continue;}
         break user_id.unwrap();
     };
 
