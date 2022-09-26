@@ -1,5 +1,4 @@
 pub mod models;
-pub mod schema;
 pub mod commands;
 
 use std::io;
@@ -51,7 +50,7 @@ pub fn init_database(conn: &mut SqliteConnection) -> Result<(),diesel::result::E
 }
 
 pub fn signup(conn: &mut SqliteConnection) { 
-    use crate::schema::accounts::dsl::*;
+    use models::accounts::dsl::*;
     let username: String = user_input("Enter Username: ").unwrap();
     print_flush("Entre Password: ");
     let user_password: String = rpassword::read_password().unwrap();
@@ -67,7 +66,7 @@ pub fn signup(conn: &mut SqliteConnection) {
 }
 
 pub fn login(conn: &mut SqliteConnection) -> Account {
-    use schema::accounts::dsl::*;
+    use models::accounts::dsl::*;
     
     let user_id = loop {
         //prompt user for account info

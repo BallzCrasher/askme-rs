@@ -1,10 +1,6 @@
 use diesel::prelude::*;
 use diesel::Insertable;
 
-use crate::schema::questions;
-use crate::schema::accounts;
-use crate::schema::answers;
-
 #[derive(Queryable)]
 pub struct Account {
      pub id: i32,
@@ -52,4 +48,31 @@ pub struct NewAnswer<'a> {
     pub thread_id: i32,
     pub publisher: i32,
     pub is_anonymous: bool
+}
+
+diesel::table! {
+    accounts (id) {
+        id -> Integer,
+        name -> Text,
+        password -> Text,
+    }
+}
+
+diesel::table! {
+    questions (id) {
+        id -> Integer,
+        content -> Text,
+        publisher -> Integer,
+        is_anonymous -> Bool,
+    }
+}
+
+diesel::table! {
+    answers (id) {
+        id -> Integer,
+        content -> Text,
+        thread_id -> Integer,
+        publisher -> Integer,
+        is_anonymous -> Bool,
+    }
 }
