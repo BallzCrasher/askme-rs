@@ -1,6 +1,5 @@
 use diesel::{prelude::*, insert_into};
 use crate::models::*;
-use crate::print_flush;
 use crate::user_input;
 
 pub fn get_questions(conn: &mut SqliteConnection) {
@@ -20,7 +19,7 @@ pub fn get_questions(conn: &mut SqliteConnection) {
 
 pub fn ask_question(conn: &mut SqliteConnection, account: &Account) { 
     use crate::schema::questions::dsl::*;
-    let input = user_input::<String>().unwrap();
+    let input = user_input::<String>("Question: ").unwrap();
     let qst = NewQuestion {
         content: input.as_str(),
         publisher: account.id,
@@ -47,8 +46,7 @@ pub fn get_users(conn: &mut SqliteConnection) {
 pub fn open_thread(conn: &mut SqliteConnection) {
     use crate::schema::questions::dsl::*;
 
-    print_flush("Input the id of the thread: ");
-    let thread_id = user_input::<i32>();
+    let thread_id = user_input::<i32>("Input the id of the thread: ");
     if thread_id.is_err() {
         println!("Invalid Input::id must be a number");
         return;

@@ -18,15 +18,15 @@ pub fn clear_screen() {
     print_flush(&format!("{esc}[2J{esc}[1;1H", esc = 27 as char));
 }
 
-pub fn user_input<T: std::str::FromStr>() -> Result<T, <T as std::str::FromStr>::Err>
+pub fn user_input<T: std::str::FromStr>(prompt: &str) -> Result<T, <T as std::str::FromStr>::Err>
 where
     <T as std::str::FromStr>::Err: std::fmt::Debug,
 {
+    print_flush(prompt);
     let mut inp = String::new();
     io::stdin().read_line(&mut inp).expect("IO error");
     return inp.trim().parse::<T>();
 }
-
 
 pub fn establish_connection(url: &str) -> SqliteConnection {
     SqliteConnection::establish(url)
@@ -52,8 +52,7 @@ pub fn init_database(conn: &mut SqliteConnection) -> Result<(),diesel::result::E
 
 pub fn signup(conn: &mut SqliteConnection) { 
     use crate::schema::accounts::dsl::*;
-    print_flush("Enter Username: ");
-    let username: String = user_input().unwrap();
+    let username: String = user_input("Enter Username: ").unwrap();
     print_flush("Entre Password: ");
     let user_password: String = rpassword::read_password().unwrap();
     let user_password = sha256::digest(user_password);
@@ -72,8 +71,7 @@ pub fn login(conn: &mut SqliteConnection) -> Account {
     
     let user_id = loop {
         //prompt user for account info
-        print_flush("Username: ");
-        let username: String = user_input().unwrap();
+        let username: String = user_input("Username: ").unwrap();
         print_flush("Password: ");
         let user_password: String = rpassword::read_password().unwrap();
         let user_password = sha256::digest(user_password);
@@ -93,8 +91,7 @@ pub fn login(conn: &mut SqliteConnection) -> Account {
 pub fn prompt_login(conn: &mut SqliteConnection) -> Account {
     loop {
         println!("Commands: [ 0: signup, 1: login ]");
-        print_flush("-~>: "); 
-        let input = user_input::<String>().unwrap();
+        let input = user_input::<String>("-~>: ").unwrap();
 
         match input.to_lowercase().trim() {
             "0" | "signup" => signup(conn),

@@ -13,7 +13,7 @@ pub struct Account {
 }
 
 #[derive(Insertable)]
-#[table_name = "accounts"]
+#[diesel(table_name = accounts)]
 pub struct NewAccount<'a> {
      pub name: &'a str,
      pub password: &'a str,
@@ -29,7 +29,7 @@ pub struct Question {
 
 
 #[derive(Insertable)]
-#[table_name = "questions"]
+#[diesel(table_name = questions)]
 pub struct NewQuestion<'a> {
     pub content: &'a str,
     pub publisher: i32,
@@ -46,7 +46,7 @@ pub struct Answer {
 }
 
 #[derive(Insertable)]
-#[table_name = "answers"]
+#[diesel(table_name = answers)]
 pub struct NewAnswer<'a> {
     pub content: &'a str,
     pub thread_id: i32,

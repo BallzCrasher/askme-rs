@@ -11,8 +11,7 @@ fn main() {
 
     loop {
         println!("Commands: [ 1: questions, 2: ask, 3: open_thread, 4: users, 9: clear, 0: exit ]");
-        print_flush("Command: "); 
-        let input = user_input::<String>().unwrap();
+        let input: String = user_input("Command: ").unwrap();
 
         match input.to_lowercase().trim() { 
             "1" | "questions" => get_questions(connection),
