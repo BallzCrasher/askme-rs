@@ -88,13 +88,15 @@ pub fn login(conn: &mut SqliteConnection) -> Account {
 } 
 
 pub fn prompt_login(conn: &mut SqliteConnection) -> Account {
+    use std::process::exit;
     loop {
-        println!("Commands: [ 0: signup, 1: login ]");
+        println!("Commands: [ 0: exit, 1: login, 2: signup ]");
         let input = user_input::<String>("-~>: ").unwrap();
 
         match input.to_lowercase().trim() {
-            "0" | "signup" => signup(conn),
+            "0" | "exit" => exit(0),
             "1" | "login" => break login(conn),
+            "2" | "signup" => signup(conn),
             _ => continue
         }
     }
