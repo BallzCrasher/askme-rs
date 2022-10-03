@@ -21,6 +21,8 @@ where
     return inp.trim().parse::<T>();
 }
 
+fn delete_thread(database: &sqlite3::Connection, id: u32){ 
+}
 
 fn sign_in(database: &sqlite3::Connection) -> String { 
 
@@ -198,7 +200,7 @@ fn open_thread(database: &sqlite3::Connection, account: &String) {
 
     loop {
         println!("Commands[ 0: back, 1: answer ]");
-        print_flush("Command: ");
+        print_flush("-~> ");
         let input = user_input::<String>().unwrap();
 
         match input.to_lowercase().trim() { 
@@ -294,7 +296,7 @@ fn main() -> Result<(), sqlite3::Error > {
 
     loop {
         println!("Commands: [ 1: questions, 2: ask, 3: open_thread, 4: users, 9: clear, 0: exit ]");
-        print_flush("Command: "); 
+        print_flush("-~> "); 
 
         let input = user_input::<String>().unwrap();
 
