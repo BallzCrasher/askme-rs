@@ -9,7 +9,7 @@ fn main() {
     println!("Signed As: {}", user_account.name);
 
     loop {
-        println!("Commands: [ 1: questions, 2: ask, 3: ask anonymous, 4: open thread, 5: users, 6: my answers, 9: clear, 0: exit ]");
+        println!("Commands: [ 1: questions, 2: ask, 3: ask anonymous, 4: open thread, 5: users, 6: my answers, 7: delete thread, 8: delete account, 9: clear, 0: exit ]");
         let input: String = user_input("Command: ").unwrap();
 
         match input.to_lowercase().trim() { 
@@ -19,6 +19,8 @@ fn main() {
             "4" | "open thread" => open_thread(connection, &user_account),
             "5" | "users" => get_users(connection),
             "6" | "my answers" => user_answers(connection, &user_account),
+            "7" | "delete thread" => delete_thread(connection, &user_account),
+            "8" | "delete account" => delete_account(connection, &user_account),
             "9" | "clear" => clear_screen(),
             "0" | "exit" => break,
             _ => continue

@@ -9,19 +9,21 @@ pub fn get_questions(conn: &mut SqliteConnection) {
         .load(conn)
         .expect("Error Quering for questions");
 
+    let mut current_index = 1;
     for question in results {
-        if question.is_anonymous {
-            println!("({}) {} -- {}", question.id, question.content, "Anonymous");
-        } else {
-            use crate::models::accounts::dsl::*;
-            let publisher_name = accounts
-                .find(question.publisher)
-                .first::<Account>(conn)
-                .unwrap()
-                .name;
-                //
-            println!("({}) {} -- {}", question.id, question.content,publisher_name);
+        use crate::models::accounts::dsl::*;
+        let publisher_account = accounts
+            .find(question.publisher)
+            .first::<Account>(conn);
+        if publisher_account.is_err() { 
+            println!("({}) {} -- {}", current_index, question.content, "Deleted");
         }
+        if question.is_anonymous {
+            println!("({}) {} -- {}", current_index, question.content, "Anonymous");
+        } else {
+            println!("({}) {} -- {}", current_index, question.content,publisher_account.unwrap().name);
+        }
+        current_index += 1;
     }
 }
 
@@ -55,7 +57,6 @@ pub fn open_thread(conn: &mut SqliteConnection, account: &Account) {
     use crate::models::questions::dsl::*;
     use crate::models::accounts::dsl::*;
 
-    get_questions(conn);
     fn show_thread(conn: &mut SqliteConnection, thrd_id: i32, replay_id: i32, layer: usize) { 
         use crate::models::answers::dsl::*;
         let results: Vec<Answer> = answers
@@ -71,7 +72,7 @@ pub fn open_thread(conn: &mut SqliteConnection, account: &Account) {
                 let username: String = accounts
                     .select(name)
                     .find(answer.publisher)
-                    .first(conn).expect(format!("ERROR :: FOUND ID ({}) OF UNKNOWN USER",answer.publisher).as_str());
+                    .first(conn).unwrap_or(String::from("Deleted"));
 
                 println!("({}) {} -- {}", answer.id, answer.content,username);
             }
@@ -81,9 +82,10 @@ pub fn open_thread(conn: &mut SqliteConnection, account: &Account) {
 
     fn prompt_replay(conn: &mut SqliteConnection, thrd_id: i32, account_id: i32, anonymous: bool){ 
         use crate::models::answers::dsl::*;
-        let input = user_input::<i32>("Enter the id of the post you wish to replay to (0 if replaying to the original post): ");
-        if input.is_err() { println!("id must be a number"); return;}
-        let input_id = input.unwrap();
+        let input_id = match user_input::<i32>("Enter the id of the post you wish to replay to (0 if replaying to the original post): ") {
+            Ok(int) => int,
+            Err(_) => { eprintln!("id must be a number"); return; }
+        };
         // checking if there is post with such id
         if input_id != 0 && answers.find(input_id).first::<Answer>(conn).is_err() { 
             println!("No Such id");
@@ -130,34 +132,34 @@ pub fn open_thread(conn: &mut SqliteConnection, account: &Account) {
         }
     }
 
+    get_questions(conn);
     //get thread_id
-    let thread_id = user_input::<i32>("Input the id of the thread: ");
-    if thread_id.is_err() {
-        println!("Invalid Input::id must be a number");
-        return;
-    }
-    let thread_id = thread_id.unwrap();
+    let thread_id = match user_input::<i32>("Input the id of the thread: ") {
+        Ok(int) => int,
+        Err(_) => { eprintln!("Invalid Input::id must be a number"); return; }
+    };
     let result = questions
-        .find(thread_id)
+        .offset((thread_id - 1) as i64)
         .first::<Question>(conn);
     // currently there is no way to handle sever errors
-    if result.is_err() {
-        println!("Invalid Input::No thread with such id");
-        return;
-    }
-    let question = result.unwrap(); 
+    let question = match result {
+        Ok(s) => s,
+        Err(_) => {
+            eprintln!("Invalid Input :: No thread with such id or invalid connection");
+            return;
+        }
+    };
+
     loop { 
-        if question.is_anonymous { 
+        let publisher_account: Result<Account,_> = accounts
+            .find(question.publisher)
+            .first(conn);
+        if publisher_account.is_err() { 
+            println!("(0) {} -- {}", question.content, "Deleted" );
+        } else if question.is_anonymous { 
             println!("(0) {} -- {}", question.content, "Anonymous" )
-        } else { 
-            let publisher_account: Result<Account,_> = accounts
-                .find(question.publisher)
-                .first(conn);
-            if publisher_account.is_err() { 
-                println!("(0) {} -- {}", question.content, "Deleted" );
-            } else { 
-                println!("(0) {} -- {}", question.content, publisher_account.unwrap().name );
-            }
+        } else  { 
+            println!("(0) {} -- {}", question.content, publisher_account.unwrap().name );
         }
 
         show_thread(conn, thread_id, 0, 1);
@@ -184,4 +186,68 @@ pub fn user_answers(conn: &mut SqliteConnection, account: &Account){
     for answer in results { 
         println!("({}) {} -> Thread: {}",answer.id, answer.content, answer.thread_id);
     }
+}
+
+pub fn delete_thread(conn: &mut SqliteConnection, account: &Account){ 
+    let thrd_id = user_input::<i32>("Enter the id of the thread you want to delete: ");
+    if thrd_id.is_err() { println!("id must be a number."); return; }
+    let thrd_id = thrd_id.unwrap();
+    use crate::models::questions::dsl::*;
+    // check if thread belongs to the user
+    let result = questions
+        .find(thrd_id)
+        .first::<Question>(conn);
+    if result.is_err() { 
+        println!("No such ID");
+        return;
+    }
+    let marked_thread = result.unwrap();
+    if marked_thread.publisher != account.id { 
+        println!("Can't delete a thread that does not belong to you");
+        return;
+    }
+    // valid  
+    use crate::models::answers::dsl;
+    // delete all answers that belongs to this thread
+    diesel::delete(dsl::answers.filter(dsl::thread_id.eq(thrd_id)))
+        .execute(conn)
+        .expect("connection error");
+    // and finally delete the thread
+    diesel::delete(questions.filter(id.eq(thrd_id)))
+        .execute(conn)
+        .expect("connection error");
+
+}
+
+pub fn delete_account(conn: &mut SqliteConnection, account: &Account) {
+    let input: String = user_input("Do you want to delete all your questions and answers? [N/y]: ").unwrap();
+    if  input.to_lowercase().trim().starts_with("y"){ 
+        //delete answers
+        use crate::models::answers::dsl::*;
+        diesel::delete(
+            answers
+            .filter(publisher.eq(account.id))
+        ).execute(conn).expect("Error connecting to database");
+        // delete thread
+        use crate::models::questions::dsl;
+        let user_threads: Vec<i32> = dsl::questions
+            .select(dsl::id)
+            .filter(dsl::publisher.eq(account.id))
+            .load(conn).expect("connection error");
+        for thrd_id in user_threads { 
+            // delete all answers that belongs to this thread
+            diesel::delete(answers.filter(thread_id.eq(thrd_id)))
+                .execute(conn)
+                .expect("connection error");
+        }
+        // and finally delete the thread
+        diesel::delete(dsl::questions.filter(dsl::publisher.eq(account.id)))
+            .execute(conn)
+            .expect("connection error");
+    } else { return; }
+    use crate::models::accounts::dsl::*;
+        diesel::delete(accounts.filter(id.eq(account.id))
+        ).execute(conn).expect("Error connecting to database");
+    
+    std::process::exit(0);
 }
