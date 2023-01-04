@@ -1,5 +1,9 @@
 [package]
+<<<<<<< HEAD
 name = "askme-diesel-rs"
+=======
+name = "askme-rs"
+>>>>>>> origin/main
 version = "0.1.0"
 edition = "2021"
 
