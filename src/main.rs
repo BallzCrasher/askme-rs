@@ -1,4 +1,4 @@
-use askme_diesel_rs::*;
+use askme_rs::*;
 use commands::*;
 
 fn main() {
